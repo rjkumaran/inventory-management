@@ -151,7 +151,7 @@ def _add_business_days(start: datetime, n: int) -> datetime:
     added = 0
     while added < n:
         d += timedelta(days=1)
-        if d.weekday() < 5:
+        if d.weekday() < 5:  # weekday() returns 0–4 for Mon–Fri, 5–6 for Sat–Sun
             added += 1
     return d
 
@@ -230,6 +230,7 @@ def get_dashboard_summary(
     filtered_orders = filter_by_month(filtered_orders, month)
 
     total_inventory_value = sum(item["quantity_on_hand"] * item["unit_cost"] for item in filtered_inventory)
+    # <= rather than < because hitting exactly the reorder point also triggers a restock
     low_stock_items = len([item for item in filtered_inventory if item["quantity_on_hand"] <= item["reorder_point"]])
     pending_orders = len([order for order in filtered_orders if order["status"] in ["Processing", "Backordered"]])
     total_backlog_items = len(backlog_items)
@@ -270,7 +271,7 @@ def get_quarterly_reports():
 
     for order in orders:
         order_date = order.get('order_date', '')
-        # Determine quarter
+        # Bucket by quarter using substring match on ISO date strings (e.g. "2025-01-15")
         if '2025-01' in order_date or '2025-02' in order_date or '2025-03' in order_date:
             quarter = 'Q1-2025'
         elif '2025-04' in order_date or '2025-05' in order_date or '2025-06' in order_date:

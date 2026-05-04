@@ -74,6 +74,50 @@
           </table>
         </div>
       </div>
+
+      <div v-if="restockingOrders.length > 0" class="card">
+        <div class="card-header">
+          <h3 class="card-title">Submitted Orders ({{ restockingOrders.length }})</h3>
+          <span class="card-subtitle">Restocking orders placed via the Restocking Planner</span>
+        </div>
+        <div class="table-container">
+          <table class="orders-table">
+            <thead>
+              <tr>
+                <th class="col-order-number">Order #</th>
+                <th class="col-items">Items</th>
+                <th class="col-value">Budget</th>
+                <th class="col-value">Total Cost</th>
+                <th class="col-date">Order Date</th>
+                <th class="col-date">Est. Delivery</th>
+                <th class="col-status">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in restockingOrders" :key="order.id">
+                <td class="col-order-number"><strong>{{ order.order_number }}</strong></td>
+                <td class="col-items">
+                  <details class="items-details">
+                    <summary class="items-summary">{{ order.items.length }} item(s)</summary>
+                    <div class="items-dropdown">
+                      <div v-for="item in order.items" :key="item.item_sku" class="item-entry">
+                        <span class="item-name">{{ item.item_name }}</span>
+                        <span class="item-meta">SKU: {{ item.item_sku }} · Qty: {{ item.quantity.toLocaleString() }} @ ${{ item.unit_cost }}</span>
+                      </div>
+                    </div>
+                  </details>
+                </td>
+                <td class="col-value">${{ order.budget.toLocaleString() }}</td>
+                <td class="col-value"><strong>${{ order.total_cost.toLocaleString() }}</strong></td>
+                <td class="col-date">{{ formatDate(order.order_date) }}</td>
+                <td class="col-date">{{ formatDate(order.estimated_delivery) }}</td>
+                <td class="col-status"><span class="badge info">{{ order.status }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="lead-time-note">Estimated delivery: 4 business days from order date</p>
+      </div>
     </div>
   </div>
 </template>
@@ -95,6 +139,7 @@ export default {
     const loading = ref(true)
     const error = ref(null)
     const orders = ref([])
+    const restockingOrders = ref([])
 
     // Use shared filters
     const {
@@ -109,14 +154,14 @@ export default {
       try {
         loading.value = true
         const filters = getCurrentFilters()
-        const fetchedOrders = await api.getOrders(filters)
+        const [fetchedOrders, fetchedRestocking] = await Promise.all([
+          api.getOrders(filters),
+          api.getRestockingOrders()
+        ])
 
         // Sort orders by order_date (earliest first)
-        orders.value = fetchedOrders.sort((a, b) => {
-          const dateA = new Date(a.order_date)
-          const dateB = new Date(b.order_date)
-          return dateA - dateB
-        })
+        orders.value = fetchedOrders.sort((a, b) => new Date(a.order_date) - new Date(b.order_date))
+        restockingOrders.value = fetchedRestocking
       } catch (err) {
         error.value = 'Failed to load orders: ' + err.message
       } finally {
@@ -160,6 +205,7 @@ export default {
       loading,
       error,
       orders,
+      restockingOrders,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
@@ -275,5 +321,17 @@ export default {
 .item-meta {
   font-size: 0.813rem;
   color: #64748b;
+}
+
+.card-subtitle {
+  font-size: 0.813rem;
+  color: #64748b;
+}
+
+.lead-time-note {
+  margin-top: 0.75rem;
+  font-size: 0.813rem;
+  color: #64748b;
+  font-style: italic;
 }
 </style>
